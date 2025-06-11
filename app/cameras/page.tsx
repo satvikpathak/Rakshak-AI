@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -17,74 +17,87 @@ import {
   Maximize,
   AlertTriangle
 } from 'lucide-react';
-
-// Mock camera data
-const mockCameras = [
-  {
-    id: 'CAM_001',
-    name: 'Sector 17 Plaza - Main Entrance',
-    location: 'Sector 17',
-    lat: 30.7398,
-    lng: 76.7827,
-    status: 'online',
-    streamUrl: 'rtsp://example.com/sector17_main',
-    incidents: [
-      { time: '14:30', type: 'weapon', description: 'Potential weapon detected in crowd' },
-      { time: '13:45', type: 'suspicious', description: 'Unattended baggage near ATM' }
-    ]
-  },
-  {
-    id: 'CAM_002',
-    name: 'Rose Garden - Central Path',
-    location: 'Rose Garden',
-    lat: 30.7473,
-    lng: 76.7693,
-    status: 'online',
-    streamUrl: 'rtsp://example.com/rose_garden',
-    incidents: [
-      { time: '14:25', type: 'suspicious', description: 'Person loitering near restricted area' }
-    ]
-  },
-  {
-    id: 'CAM_003',
-    name: 'Sukhna Lake - Boat Club',
-    location: 'Sukhna Lake',
-    lat: 30.7421,
-    lng: 76.8188,
-    status: 'online',
-    streamUrl: 'rtsp://example.com/sukhna_lake',
-    incidents: [
-      { time: '14:20', type: 'emotion', description: 'Aggressive behavior detected' },
-      { time: '13:30', type: 'crowd', description: 'Large crowd gathering detected' }
-    ]
-  },
-  {
-    id: 'CAM_004',
-    name: 'Sector 22 - Market Area',
-    location: 'Sector 22',
-    lat: 30.7333,
-    lng: 76.7794,
-    status: 'maintenance',
-    streamUrl: null,
-    incidents: []
-  }
-];
+import axios from 'axios';
+import { jsPDF } from 'jspdf';
 
 export default function CamerasPage() {
+  const [cameras, setCameras] = useState([]);
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
-  const [filteredCameras, setFilteredCameras] = useState(mockCameras);
+  const [filteredCameras, setFilteredCameras] = useState([]);
+  const [liveFeedData, setLiveFeedData] = useState(null);
+  const mapRef = useRef(null);
+  const googleMapRef = useRef(null);
 
+  // Fetch cameras on mount
   useEffect(() => {
-    const filtered = mockCameras.filter(camera =>
+    const fetchCameras = async () => {
+      try {
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/cameras`);
+        setCameras(response.data);
+        setFilteredCameras(response.data);
+      } catch (error) {
+        console.error("Error fetching cameras:", error);
+      }
+    };
+    fetchCameras();
+  }, []);
+
+  // Filter cameras based on search term
+  useEffect(() => {
+    const filtered = cameras.filter(camera =>
       camera.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       camera.location.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredCameras(filtered);
-  }, [searchTerm]);
+  }, [searchTerm, cameras]);
 
-  const selectedCameraData = mockCameras.find(cam => cam.id === selectedCamera);
+  // Fetch live feed when a camera is selected
+  useEffect(() => {
+    if (selectedCamera) {
+      const fetchLiveFeed = async () => {
+        try {
+          const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/live-feed/${selectedCamera}`);
+          setLiveFeedData(response.data);
+        } catch (error) {
+          console.error("Error fetching live feed:", error);
+          setLiveFeedData(null);
+        }
+      };
+      fetchLiveFeed();
+    }
+  }, [selectedCamera]);
+
+  // Initialize Google Map
+  useEffect(() => {
+    const initMap = () => {
+      const chandigarh = { lat: 30.7333, lng: 76.7794 };
+      const map = new google.maps.Map(mapRef.current, {
+        zoom: 12,
+        center: chandigarh,
+      });
+
+      cameras.forEach(camera => {
+        const marker = new google.maps.Marker({
+          position: { lat: camera.lat, lng: camera.lng },
+          map,
+          title: camera.name,
+        });
+        marker.addListener("click", () => {
+          setSelectedCamera(camera.id);
+        });
+      });
+
+      googleMapRef.current = map;
+    };
+
+    if (typeof google !== "undefined" && mapRef.current && cameras.length > 0) {
+      initMap();
+    }
+  }, [cameras]);
+
+  const selectedCameraData = cameras.find(cam => cam.id === selectedCamera);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -106,23 +119,18 @@ export default function CamerasPage() {
   };
 
   const generatePDFReport = (camera: any) => {
-    // In a real app, this would generate and download a PDF
-    const reportData = {
-      cameraName: camera.name,
-      location: camera.location,
-      timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-      incidents: camera.incidents,
-      status: camera.status
-    };
-
-    // Mock PDF generation
-    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${camera.id}_report_${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const doc = new jsPDF();
+    doc.text("Rakshak AI Incident Report", 10, 10);
+    doc.text(`Camera: ${camera.name}`, 10, 20);
+    doc.text(`Location: ${camera.location}`, 10, 30);
+    doc.text(`Coordinates: (${camera.lat}, ${camera.lng})`, 10, 40);
+    doc.text(`Timestamp: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 10, 50);
+    doc.text(`Status: ${camera.status}`, 10, 60);
+    doc.text("Incidents:", 10, 70);
+    camera.incidents.forEach((incident, index) => {
+      doc.text(`${index + 1}. ${incident.time}: ${incident.description} (${incident.type})`, 10, 80 + index * 10);
+    });
+    doc.save(`RakshakAI_Incident_Report_${camera.id}.pdf`);
   };
 
   return (
@@ -131,7 +139,7 @@ export default function CamerasPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">CCTV Camera Network</h1>
           <p className="text-gray-400 mt-1">
-            Monitor live feeds from {mockCameras.length} cameras across Chandigarh
+            Monitor live feeds from {cameras.length} cameras across Chandigarh
           </p>
         </div>
       </div>
@@ -218,26 +226,38 @@ export default function CamerasPage() {
               <div className="space-y-4">
                 {/* Video Player */}
                 <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                  {selectedCameraData.status === 'online' ? (
+                  {selectedCameraData.status === 'online' && liveFeedData ? (
                     <div className="relative w-full h-full flex items-center justify-center">
-                      {/* Mock video player */}
+                      {/* Video player */}
                       <div className="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
-                        <div className="text-center">
-                          <Camera className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                          <p className="text-gray-400">Live Feed: {selectedCameraData.name}</p>
-                          <p className="text-sm text-gray-500 mt-2">Stream: {selectedCameraData.streamUrl}</p>
-                        </div>
+                        {liveFeedData.frameUrl ? (
+                          <img
+                            src={`${process.env.NEXT_PUBLIC_BACKEND_URL}${liveFeedData.frameUrl}`}
+                            alt="Live Feed Frame"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="text-center">
+                            <Camera className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                            <p className="text-gray-400">Live Feed: {selectedCameraData.name}</p>
+                            <p className="text-sm text-gray-500 mt-2">Stream: {selectedCameraData.streamUrl}</p>
+                          </div>
+                        )}
                       </div>
                       
                       {/* AI Detection Overlays */}
-                      <div className="absolute top-4 left-4 space-y-2">
-                        <div className="bg-red-500 text-white px-2 py-1 rounded text-xs">
-                          WEAPON DETECTED
+                      {liveFeedData.aiOverlays && (
+                        <div className="absolute top-4 left-4 space-y-2">
+                          {liveFeedData.aiOverlays.map((overlay, index) => (
+                            <div
+                              key={index}
+                              className={`bg-${overlay.color} text-${overlay.color === 'yellow-500' ? 'black' : 'white'} px-2 py-1 rounded text-xs`}
+                            >
+                              {overlay.label}
+                            </div>
+                          ))}
                         </div>
-                        <div className="bg-yellow-500 text-black px-2 py-1 rounded text-xs">
-                          EMOTION: ANGRY
-                        </div>
-                      </div>
+                      )}
 
                       {/* Video Controls */}
                       <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between bg-black bg-opacity-50 rounded px-4 py-2">
@@ -347,18 +367,7 @@ export default function CamerasPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-96 bg-gray-900 rounded-lg flex items-center justify-center border border-gray-700">
-            <div className="text-center">
-              <MapPin className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400 mb-2">Interactive Map View</p>
-              <p className="text-sm text-gray-500">
-                Google Maps integration showing all {mockCameras.length} camera locations
-              </p>
-              <p className="text-xs text-gray-600 mt-2">
-                Center: Chandigarh (30.7333, 76.7794) | Zoom: 12
-              </p>
-            </div>
-          </div>
+          <div ref={mapRef} className="h-96 bg-gray-900 rounded-lg border border-gray-700" />
         </CardContent>
       </Card>
     </div>
