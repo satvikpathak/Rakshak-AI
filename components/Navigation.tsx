@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Shield, Camera, FileText, Upload, Baseline as Timeline, LogOut, Menu, X } from 'lucide-react';
+import { Shield, Camera, FileText, Upload, Baseline as Timeline, LogOut, Menu, X, Users, Badge } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-const navigation = [
+// Define navigation items for different user types
+const officerNavigation = [
   { name: 'Dashboard', href: '/', icon: Shield },
   { name: 'Cameras', href: '/cameras', icon: Camera },
   { name: 'Reports', href: '/reports', icon: FileText },
@@ -15,9 +15,52 @@ const navigation = [
   { name: 'Incident Timeline', href: '/timeline', icon: Timeline },
 ];
 
+const civilianNavigation = [
+  { name: 'Cameras', href: '/cameras', icon: Camera },
+];
+
 export function Navigation() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
+  const [currentPath, setCurrentPath] = useState('/');
+  const [userInfo, setUserInfo] = useState({
+    type: '',
+    name: '',
+    id: ''
+  });
+  const router = useRouter()
+  const params = useSearchParams();
+  
+  useEffect(() => {
+  
+    const type = params.get('type') 
+    const name = params.get('name') 
+    const id = params.get('id') 
+
+    if(!type || !name || !id) {
+      return;
+    }
+    setUserInfo({ type, name, id });
+  }, [params]);
+
+  // Get navigation items based on user type
+  const navigation = userInfo.type === 'civilian' ? civilianNavigation : officerNavigation;
+
+  const handleNavigation = (href) => {
+    setCurrentPath(href);
+    setSidebarOpen(false);
+    // In a real app, you'd use router.push(href) here
+    router.push(href);
+    console.log(`Navigating to: ${href}`);
+  };
+
+  const handleLogout = () => {
+    // In a real app, you'd use router.push('/login') here
+    console.log('Logging out...');
+    router.push('/');
+  };
+  if (!userInfo.type || !userInfo.name || !userInfo.id) {
+    return null;
+  }
 
   return (
     <>
@@ -40,42 +83,80 @@ export function Navigation() {
       )}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center justify-center h-16 bg-blue-900 border-b border-gray-800">
-            <Shield className="h-8 w-8 text-blue-400 mr-2" />
-            <h1 className="text-xl font-bold text-white">Rakshak AI</h1>
+          <div className={`flex items-center justify-center h-16 border-b border-gray-800 ${
+            userInfo.type === 'civilian' ? 'bg-green-900' : 'bg-blue-900'
+          }`}>
+            <Shield className={`h-8 w-8 mr-2 ${
+              userInfo.type === 'civilian' ? 'text-green-400' : 'text-blue-400'
+            }`} />
+            <div className="text-center">
+              <h1 className="text-xl font-bold text-white">Rakshak AI</h1>
+              <p className="text-xs text-gray-300">
+                {userInfo.type === 'civilian' ? 'Civilian Portal' : 'Officer Portal'}
+              </p>
+            </div>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = currentPath === item.href;
               return (
-                <Link
+                <Button
                   key={item.name}
-                  href={item.href}
-                  onClick={() => setSidebarOpen(false)}
+                  variant="ghost"
+                  onClick={() => handleNavigation(item.href)}
                   className={cn(
-                    "flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors",
+                    "w-full justify-start px-4 py-3 text-sm font-medium rounded-lg transition-colors",
                     isActive
-                      ? "bg-blue-900 text-blue-100 border-l-4 border-blue-400"
+                      ? userInfo.type === 'civilian'
+                        ? "bg-green-900 text-green-100 border-l-4 border-green-400"
+                        : "bg-blue-900 text-blue-100 border-l-4 border-blue-400"
                       : "text-gray-300 hover:bg-gray-800 hover:text-white"
                   )}
                 >
                   <item.icon className="h-5 w-5 mr-3" />
                   {item.name}
-                </Link>
+                </Button>
               );
             })}
           </nav>
 
           {/* User info */}
           <div className="border-t border-gray-800 p-4">
-            <div className="text-sm text-gray-400 mb-2">Logged in as:</div>
-            <div className="text-white font-medium mb-3">Officer Rajesh Kumar</div>
+            <div className="flex items-center mb-3">
+              {userInfo.type === 'civilian' ? (
+                <Users className="h-5 w-5 text-green-400 mr-2" />
+              ) : (
+                <Badge className="h-5 w-5 text-blue-400 mr-2" />
+              )}
+              <div className="flex-1">
+                <div className="text-sm text-gray-400 mb-1">
+                  {userInfo.type === 'civilian' ? 'Civilian User:' : 'Officer:'}
+                </div>
+                <div className="text-white font-medium text-sm truncate">
+                  {userInfo.name}
+                </div>
+                <div className="text-xs text-gray-500">
+                  ID: {userInfo.id}
+                </div>
+              </div>
+            </div>
+            
+            {/* Access Level Indicator */}
+            <div className={`mb-3 p-2 rounded text-xs text-center ${
+              userInfo.type === 'civilian' 
+                ? 'bg-green-900/50 text-green-300 border border-green-800' 
+                : 'bg-blue-900/50 text-blue-300 border border-blue-800'
+            }`}>
+              {userInfo.type === 'civilian' ? 'Limited Access' : 'Full Access'}
+            </div>
+
             <Button
               variant="outline"
               size="sm"
               className="w-full bg-transparent border-gray-700 text-white hover:bg-red-900 hover:border-red-700"
+              onClick={handleLogout}
             >
               <LogOut className="h-4 w-4 mr-2" />
               Sign Out

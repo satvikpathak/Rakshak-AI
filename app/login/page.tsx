@@ -6,22 +6,56 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Shield, Eye, EyeOff, Lock, User } from 'lucide-react';
+import { Shield, Eye, EyeOff, Lock, User, Badge, Users } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [userType, setUserType] = useState('officer'); // 'officer' or 'civilian'
   const [credentials, setCredentials] = useState({
     badgeId: '',
+    citizenId: '',
+    name: '',
     password: '',
     remember: false
   });
-
-  const handleLogin = (e: React.FormEvent) => {
+  const router = useRouter()
+  const handleLogin = (e) => {
     e.preventDefault();
-    // In a real app, this would authenticate with the backend
-    console.log('Login attempt:', credentials);
-    // Redirect to dashboard
-    window.location.href = '/';
+    
+    // Create user info for URL params
+    const userInfo = {
+      type: userType,
+      name: userType === 'officer' ? `Officer ${credentials.name}` : credentials.name,
+      id: userType === 'officer' ? credentials.badgeId : credentials.citizenId
+    };
+    
+    // Create URL search params
+    const params = new URLSearchParams({
+      type: userInfo.type,
+      name: userInfo.name,
+      id: userInfo.id
+    });
+    
+    console.log('Login attempt:', { ...credentials, userType });
+    router.push(`/dashboard?${params.toString()}`);
+    // Since we can't use window.location.href in artifacts, we'll simulate the login
+   
+  };
+
+  const resetForm = () => {
+    setCredentials({
+      badgeId: '',
+      citizenId: '',
+      name: '',
+      password: '',
+      remember: false
+    });
+  };
+
+  const handleUserTypeChange = (type) => {
+    setUserType(type);
+    resetForm();
   };
 
   return (
@@ -41,36 +75,116 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {/* User Type Selection */}
+        <div className="mb-6">
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              type="button"
+              variant={userType === 'officer' ? 'default' : 'outline'}
+              className={`h-20 flex flex-col items-center justify-center space-y-2 ${
+                userType === 'officer' 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600' 
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+              onClick={() => handleUserTypeChange('officer')}
+            >
+              <Badge className="h-6 w-6" />
+              <span className="text-sm font-medium">Officer Login</span>
+            </Button>
+            <Button
+              type="button"
+              variant={userType === 'civilian' ? 'default' : 'outline'}
+              className={`h-20 flex flex-col items-center justify-center space-y-2 ${
+                userType === 'civilian' 
+                  ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
+                  : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+              onClick={() => handleUserTypeChange('civilian')}
+            >
+              <Users className="h-6 w-6" />
+              <span className="text-sm font-medium">Civilian Access</span>
+            </Button>
+          </div>
+        </div>
+
         {/* Login Form */}
         <Card className="bg-gray-800 border-gray-700 shadow-2xl">
           <CardHeader>
             <CardTitle className="text-white text-center">
-              Officer Login
+              {userType === 'officer' ? 'Officer Login' : 'Civilian Access'}
             </CardTitle>
+            <p className="text-sm text-gray-400 text-center">
+              {userType === 'officer' 
+                ? 'Access full surveillance system' 
+                : 'View public camera feeds only'
+              }
+            </p>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-6">
-              {/* Badge ID */}
+            <div className="space-y-6">
+              {/* Name Field */}
               <div className="space-y-2">
-                <Label htmlFor="badgeId" className="text-gray-300">
-                  Badge ID
+                <Label htmlFor="name" className="text-gray-300">
+                  Full Name
                 </Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    id="badgeId"
+                    id="name"
                     type="text"
-                    placeholder="Enter your badge ID"
-                    value={credentials.badgeId}
+                    placeholder="Enter your full name"
+                    value={credentials.name}
                     onChange={(e) => setCredentials(prev => ({
                       ...prev,
-                      badgeId: e.target.value
+                      name: e.target.value
                     }))}
                     className="pl-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-400"
-                    required
                   />
                 </div>
               </div>
+
+              {/* Dynamic ID Field */}
+              {userType === 'officer' ? (
+                <div className="space-y-2">
+                  <Label htmlFor="badgeId" className="text-gray-300">
+                    Badge ID
+                  </Label>
+                  <div className="relative">
+                    <Badge className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="badgeId"
+                      type="text"
+                      placeholder="Enter your badge ID"
+                      value={credentials.badgeId}
+                      onChange={(e) => setCredentials(prev => ({
+                        ...prev,
+                        badgeId: e.target.value
+                      }))}
+                      className="pl-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Label htmlFor="citizenId" className="text-gray-300">
+                    Citizen ID / Phone Number
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="citizenId"
+                      type="text"
+                      placeholder="Enter your citizen ID or phone"
+                      value={credentials.citizenId}
+                      onChange={(e) => setCredentials(prev => ({
+                        ...prev,
+                        citizenId: e.target.value
+                      }))}
+                      className="pl-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-400"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Password */}
               <div className="space-y-2">
@@ -89,7 +203,6 @@ export default function LoginPage() {
                       password: e.target.value
                     }))}
                     className="pl-10 pr-10 bg-gray-900 border-gray-700 text-white placeholder:text-gray-400"
-                    required
                   />
                   <Button
                     type="button"
@@ -114,9 +227,13 @@ export default function LoginPage() {
                   checked={credentials.remember}
                   onCheckedChange={(checked) => setCredentials(prev => ({
                     ...prev,
-                    remember: checked as boolean
+                    remember: checked
                   }))}
-                  className="border-gray-600 data-[state=checked]:bg-blue-600"
+                  className={`border-gray-600 ${
+                    userType === 'officer' 
+                      ? 'data-[state=checked]:bg-blue-600' 
+                      : 'data-[state=checked]:bg-green-600'
+                  }`}
                 />
                 <Label htmlFor="remember" className="text-sm text-gray-300">
                   Remember me on this device
@@ -126,10 +243,24 @@ export default function LoginPage() {
               {/* Login Button */}
               <Button
                 type="submit"
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleLogin}
+                className={`w-full text-white ${
+                  userType === 'officer' 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
               >
-                <Shield className="h-4 w-4 mr-2" />
-                Access Surveillance System
+                {userType === 'officer' ? (
+                  <>
+                    <Shield className="h-4 w-4 mr-2" />
+                    Access Surveillance System
+                  </>
+                ) : (
+                  <>
+                    <Users className="h-4 w-4 mr-2" />
+                    Access Camera Feeds
+                  </>
+                )}
               </Button>
 
               {/* Additional Links */}
@@ -145,21 +276,27 @@ export default function LoginPage() {
                   For technical support, contact IT Admin
                 </div>
               </div>
-            </form>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Security Notice */}
+        {/* Access Level Notice */}
         <div className="mt-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700">
           <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+            {userType === 'officer' ? (
+              <Shield className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+            ) : (
+              <Users className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+            )}
             <div>
               <h4 className="text-sm font-medium text-white mb-1">
-                Security Notice
+                {userType === 'officer' ? 'Officer Access' : 'Civilian Access'}
               </h4>
               <p className="text-xs text-gray-400">
-                This system is for authorized personnel only. All activities are logged and monitored. 
-                Unauthorized access is strictly prohibited.
+                {userType === 'officer' 
+                  ? 'Full system access including reports, uploads, and incident management. All activities are logged and monitored.'
+                  : 'Limited access to public camera feeds only. This service helps citizens view traffic and public area cameras for safety purposes.'
+                }
               </p>
             </div>
           </div>
