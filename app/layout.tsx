@@ -20,8 +20,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.className} bg-gray-900 text-white`}>
         <div className="min-h-screen">
-          <Navigation />
-          <main className="lg:ml-64">
+           <Navigation />
+          <main className='ml-64' >
+           
             {children}
           </main>
         </div>
