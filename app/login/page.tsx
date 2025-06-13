@@ -38,7 +38,11 @@ export default function LoginPage() {
     });
     
     console.log('Login attempt:', { ...credentials, userType });
-    router.push(`/dashboard?${params.toString()}`);
+    if(userInfo.type === 'civilian') {
+      router.push(`/cameras?${params.toString()}`);
+    } else {
+      router.push(`/dashboard?${params.toString()}`);
+    }
     // Since we can't use window.location.href in artifacts, we'll simulate the login
    
   };
@@ -59,7 +63,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 p-4">
+    <div className="min-h-screen  flex items-center justify-center bg-gradient-to-br from-gray-950 via-blue-950 to-gray-950 p-4">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">

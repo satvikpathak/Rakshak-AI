@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 
 // Define navigation items for different user types
 const officerNavigation = [
-  { name: 'Dashboard', href: '/', icon: Shield },
+  { name: 'Dashboard', href: '/dashboard', icon: Shield },
   { name: 'Cameras', href: '/cameras', icon: Camera },
   { name: 'Reports', href: '/reports', icon: FileText },
   { name: 'Upload Footage', href: '/upload', icon: Upload },
@@ -56,14 +56,14 @@ export function Navigation() {
   const handleLogout = () => {
     // In a real app, you'd use router.push('/login') here
     console.log('Logging out...');
-    router.push('/');
+    router.push('/login');
   };
   if (!userInfo.type || !userInfo.name || !userInfo.id) {
     return null;
   }
 
   return (
-    <>
+    <div >
       {/* Mobile menu button */}
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <Button
@@ -78,7 +78,7 @@ export function Navigation() {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0",
+        " inset-y-0 left-0 z-40 w-64 bg-gray-900 border-r border-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0",
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
@@ -180,6 +180,6 @@ export function Navigation() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
-    </>
+    </div>
   );
 }
