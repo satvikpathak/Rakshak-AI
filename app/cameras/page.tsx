@@ -31,6 +31,49 @@ import jsPDF from 'jspdf';
 export default function CamerasPage() {
   const [cameras, setCameras] = useState([]);
   const [customCameras, setCustomCameras] = useState([]);
+  const [localVideos] = useState([
+    {
+      id: 'local_1',
+      name: 'Local Video 1',
+      location: 'Local Directory',
+      country: 'Local',
+      countryCode: 'LC',
+      lat: 0,
+      lng: 0,
+      status: 'online',
+      streamUrl: '/videos/video1.mp4', // Replace with your actual file path
+      thumbnailUrl: '/videos/video1.mp4', // Same as streamUrl for video files
+      manufacturer: 'Local',
+      rating: 5,
+      hasVideo: true,
+      lastSeen: new Date().toISOString(),
+      city: 'Local',
+      region: 'Files',
+      incidents: [],
+      source: 'local'
+    },
+    {
+      id: 'local_2',
+      name: 'Local Video 2',
+      location: 'Local Directory',
+      country: 'Local',
+      countryCode: 'LC',
+      lat: 0,
+      lng: 0,
+      status: 'online',
+      streamUrl: 'video2.mp4', // Replace with your actual file path
+      thumbnailUrl: '/videos/video2.mp4', // Same as streamUrl for video files
+      manufacturer: 'Local',
+      rating: 5,
+      hasVideo: true,
+      lastSeen: new Date().toISOString(),
+      city: 'Local',
+      region: 'Files',
+      incidents: [],
+      source: 'local'
+    }
+  ]);
+  console.log()
   const [selectedCamera, setSelectedCamera] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isPlaying, setIsPlaying] = useState(false);
@@ -161,11 +204,12 @@ export default function CamerasPage() {
       
       // Update filtered cameras if we're currently viewing custom
       if (cameraSource === 'custom') {
-        setFilteredCameras(transformedCustomCameras);
+        const allCustomCameras = [...localVideos, ...transformedCustomCameras];
+        setFilteredCameras(allCustomCameras);
         
         // Auto-select the first camera
-        if (transformedCustomCameras.length > 0) {
-          setSelectedCamera(transformedCustomCameras[0].id);
+        if (allCustomCameras.length > 0) {
+          setSelectedCamera(allCustomCameras[0].id);
         }
       }
 
@@ -174,7 +218,10 @@ export default function CamerasPage() {
       setCustomError(error.message);
       setCustomCameras([]);
       if (cameraSource === 'custom') {
-        setFilteredCameras([]);
+        setFilteredCameras([...localVideos]);
+        if (localVideos.length > 0) {
+          setSelectedCamera(localVideos[0].id);
+        }
       }
     } finally {
       setCustomLoading(false);
@@ -201,7 +248,15 @@ export default function CamerasPage() {
 
   // Filter cameras based on search term and current source
   useEffect(() => {
-    const currentCameras = cameraSource === 'insecam' ? cameras : customCameras;
+    let currentCameras = [];
+    
+    if (cameraSource === 'insecam') {
+      currentCameras = cameras;
+    } else {
+      // Combine local videos with custom cameras for filtering
+      currentCameras = [...localVideos, ...customCameras];
+    }
+    
     const filtered = currentCameras.filter(camera =>
       camera.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       camera.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -210,11 +265,19 @@ export default function CamerasPage() {
       (camera.region && camera.region.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredCameras(filtered);
-  }, [searchTerm, cameras, customCameras, cameraSource]);
+  }, [searchTerm, cameras, customCameras, cameraSource, localVideos]);
 
   // Handle camera source change
   useEffect(() => {
-    const currentCameras = cameraSource === 'insecam' ? cameras : customCameras;
+    let currentCameras = [];
+    
+    if (cameraSource === 'insecam') {
+      currentCameras = cameras;
+    } else {
+      // Combine local videos with custom cameras, local videos first
+      currentCameras = [...localVideos, ...customCameras];
+    }
+    
     setFilteredCameras(currentCameras);
     
     // Auto-select first camera when switching sources
@@ -223,18 +286,29 @@ export default function CamerasPage() {
     } else {
       setSelectedCamera(null);
     }
-  }, [cameraSource, cameras, customCameras]);
+  }, [cameraSource, cameras, customCameras, localVideos]);
 
   // Handle camera selection and live feed
   useEffect(() => {
     if (selectedCamera) {
-      const allCameras = [...cameras, ...customCameras];
+      const allCameras = [...cameras, ...customCameras, ...localVideos];
       const selectedCameraData = allCameras.find(cam => cam.id === selectedCamera);
       
       if (selectedCameraData) {
         if (selectedCameraData.source === 'custom') {
           // Fetch live feed for custom cameras
           fetchCustomLiveFeed(selectedCamera);
+        } else if (selectedCameraData.source === 'local') {
+          // Set live feed data for local videos
+          setLiveFeedData({
+            isLive: true,
+            streamUrl: selectedCameraData.streamUrl,
+            thumbnailUrl: selectedCameraData.thumbnailUrl,
+            quality: 'HD',
+            latency: '0ms',
+            location: selectedCameraData.location,
+            rating: selectedCameraData.rating
+          });
         } else {
           // Use existing logic for Insecam cameras
           setLiveFeedData({
@@ -249,7 +323,7 @@ export default function CamerasPage() {
         }
       }
     }
-  }, [selectedCamera, cameras, customCameras]);
+  }, [selectedCamera, cameras, customCameras, localVideos]);
 
   // Fetch live feed for custom cameras
   const fetchCustomLiveFeed = async (cameraId) => {
@@ -269,7 +343,7 @@ export default function CamerasPage() {
     }
   };
 
-  const selectedCameraData = [...cameras, ...customCameras].find(cam => cam.id === selectedCamera);
+  const selectedCameraData = [...cameras, ...customCameras, ...localVideos].find(cam => cam.id === selectedCamera);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -305,6 +379,7 @@ export default function CamerasPage() {
     });
     doc.save(`RakshakAI_Incident_Report_${camera.id}.pdf`);
   };
+
   const refreshData = () => {
     if (cameraSource === 'insecam') {
       fetchInsecamData();
@@ -383,7 +458,7 @@ export default function CamerasPage() {
                 className="border-gray-600"
               >
                 <Monitor className="h-4 w-4 mr-2" />
-                Custom Cameras ({customCameras.length})
+                Custom Cameras ({customCameras.length + localVideos.length})
               </Button>
             </div>
 
@@ -471,14 +546,26 @@ export default function CamerasPage() {
                 {/* Camera Thumbnail */}
                 {camera.thumbnailUrl && (
                   <div className="mb-3 aspect-video bg-black rounded overflow-hidden">
-                    <img
-                      src={camera.thumbnailUrl}
-                      alt={camera.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.style.display = 'none';
-                      }}
-                    />
+                    {camera.source === 'local' ? (
+                      <video
+                        className="w-full h-full object-cover"
+                        muted
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      >
+                        <source src={camera.thumbnailUrl} type="video/mp4" />
+                      </video>
+                    ) : (
+                      <img
+                        src={camera.thumbnailUrl}
+                        alt={camera.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    )}
                   </div>
                 )}
                 
@@ -506,7 +593,7 @@ export default function CamerasPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">{camera.manufacturer}</span>
-                    <Badge variant={camera.source === 'custom' ? 'default' : 'secondary'} className="text-xs">
+                    <Badge variant={camera.source === 'local' ? 'default' : camera.source === 'custom' ? 'default' : 'secondary'} className="text-xs">
                       {camera.source}
                     </Badge>
                   </div>
@@ -543,7 +630,7 @@ export default function CamerasPage() {
                 <Video className="h-5 w-5 text-green-500" />
                 Live Camera Feed
                 {selectedCameraData && (
-                  <Badge variant={selectedCameraData.source === 'custom' ? 'default' : 'secondary'} className="ml-2">
+                  <Badge variant={selectedCameraData.source === 'local' ? 'default' : selectedCameraData.source === 'custom' ? 'default' : 'secondary'} className="ml-2">
                     {selectedCameraData.source}
                   </Badge>
                 )}
@@ -568,161 +655,306 @@ export default function CamerasPage() {
                 <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
                   {selectedCameraData.status === 'online' ? (
                     <div className="relative w-full h-full">
-                      {liveFeedData?.thumbnailUrl || selectedCameraData.thumbnailUrl ? (
-                        <div className="relative w-full h-full">
-                          <img
-                            src={liveFeedData?.thumbnailUrl || selectedCameraData.thumbnailUrl}
-                            alt="Live Feed"
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              console.error('Failed to load stream:', liveFeedData?.thumbnailUrl || selectedCameraData.thumbnailUrl);
-                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMzc0MTUxIi8+CjxwYXRoIGQ9Ik0yMCAyMEg0NFYzMkgzNlYyOEgyOFYzNkg0NFY0NEgyMFYyMFoiIGZpbGw9IiM2QjczODAiLz4KPC9zdmc+';
-                            }}
-                          />
-                          {/* Live indicator */}
-                          <div className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">
-                            ● LIVE
-                          </div>
-                          
-                          {/* Source indicator */}
-                          <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded flex items-center gap-1">
-                            {selectedCameraData.source === 'custom' ? (
-                              <Monitor className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <Globe className="h-3 w-3 text-blue-500" />
-                            )}
-                            <span className="text-xs uppercase">{selectedCameraData.source}</span>
-                          </div>
-                          
-                          {/* Stream info */}
-                          <div className="absolute bottom-4 left-4 space-y-1">
-                            <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-                              Quality: {liveFeedData?.quality || 'HD'}
-                            </div>
-                            <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-                              Latency: {liveFeedData?.latency || '~3s'}
-                            </div>
-                          </div>
-
-                          {/* Video Controls */}
-                          <div className="absolute bottom-4 right-4 flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => setIsPlaying(!isPlaying)}
-                              className="text-white hover:bg-gray-700 bg-black bg-opacity-50"
-                            >
-                              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-white hover:bg-gray-700 bg-black bg-opacity-50"
-                            >
-                              <Maximize className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+                      {selectedCameraData.source === 'local' ? (
+                        <video
+                          ref={videoRef}
+                          controls
+                          autoPlay
+                          muted
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.error('Failed to load video:', selectedCameraData.streamUrl);
+                          }}
+                        >
+                          <source src={selectedCameraData.streamUrl} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
-                          <div className="text-center">
-                            <Camera className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-                            <p className="text-gray-400">Loading camera feed...</p>
-                            <p className="text-sm text-gray-500 mt-2">{selectedCameraData.name}</p>
+                        liveFeedData?.thumbnailUrl || selectedCameraData.thumbnailUrl ? (
+                          <div className="relative w-full h-full">
+                            <img
+                              src={liveFeedData?.thumbnailUrl || selectedCameraData.thumbnailUrl}
+                              alt="Live Feed"
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                console.error('Failed to load stream:', liveFeedData?.thumbnailUrl || selectedCameraData.thumbnailUrl);
+                                e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMzc0MTUxIi8+CjxwYXRoIGQ9Ik0yMCAyMEg0NFYzMkgzNlYyOEgyOFYzNkg0NFY0NEgyMFYyMFoiIGZpbGw9IiM2QjczODAiLz4KPC9zdmc+';
+                              }}
+                            />
+                            {/* Live indicator */}
+                            <div className="absolute top-4 left-4 bg-red-600 text-white px-2 py-1 rounded text-xs font-bold animate-pulse">
+                              ● LIVE
+                            </div>
+                            
+                            {/* Source indicator */}
+                            <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-2 py-1 rounded flex items-center gap-1">
+                              {selectedCameraData.source === 'custom' ? (
+                                <Monitor className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <Globe className="h-3 w-3 text-blue-500" />
+                              )}
+                              <span className="text-xs uppercase">{selectedCameraData.source}</span>
+                            </div>
+                            
+                            {/* Stream info */}
+                            <div className="absolute bottom-4 left-4 space-y-1">
+                              <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                                Quality: {liveFeedData?.quality || 'HD'}
+                              </div>
+                              <div className="bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
+                                Latency: {liveFeedData?.latency || '~3s'}
+                              </div>
+                            </div>
+
+                            {/* Video Controls */}
+                            <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setIsPlaying(!isPlaying)}
+                                className="text-white hover:bg-gray-700 bg-black bg-opacity-50"
+                              >
+                                {isPlaying ? (
+                                <Pause className="h-4 w-4" />
+                              ) : (
+                                <Play className="h-4 w-4" />
+                              )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-white hover:bg-gray-700 bg-black bg-opacity-50"
+                              >
+                                <Volume2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-white hover:bg-gray-700 bg-black bg-opacity-50"
+                              >
+                                <Maximize className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            <div className="text-center">
+                              <Camera className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                              <p className="text-gray-400">Stream unavailable</p>
+                              <p className="text-sm text-gray-500">Unable to load camera feed</p>
+                            </div>
+                          </div>
+                        )
                       )}
                     </div>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center">
+                    <div className="flex items-center justify-center h-full">
                       <div className="text-center">
                         <WifiOff className="h-16 w-16 text-red-500 mx-auto mb-4" />
                         <p className="text-gray-400">Camera Offline</p>
-                        <p className="text-sm text-gray-500 mt-2">Status: {selectedCameraData.status}</p>
+                        <p className="text-sm text-gray-500">This camera is currently unavailable</p>
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* Camera Info */}
+                {/* Camera Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-medium text-white mb-2">Camera Details</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">ID:</span>
-                        <span className="text-white">{selectedCameraData.id}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Source:</span>
-                        <Badge variant={selectedCameraData.source === 'custom' ? 'default' : 'secondary'}>
-                          {selectedCameraData.source}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">City:</span>
-                        <span className="text-white">{selectedCameraData.city || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Region/State:</span>
-                        <span className="text-white">{selectedCameraData.region || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Country:</span>
-                        <span className="text-white">{selectedCameraData.country} ({selectedCameraData.countryCode})</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Coordinates:</span>
-                        <span className="text-white">{selectedCameraData.lat.toFixed(4)}, {selectedCameraData.lng.toFixed(4)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Timezone:</span>
-                        <span className="text-white">UTC{selectedCameraData.timezone || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">ZIP Code:</span>
-                        <span className="text-white">{selectedCameraData.zip || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Manufacturer:</span>
-                        <span className="text-white">{selectedCameraData.manufacturer}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Status:</span>
-                        <Badge variant={selectedCameraData.status === 'online' ? 'default' : 'destructive'}>
-                          {selectedCameraData.status}
-                        </Badge>
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-blue-500" />
+                        Camera Details
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Name:</span>
+                          <span className="text-white">{selectedCameraData.name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Location:</span>
+                          <span className="text-white">{selectedCameraData.location}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Country:</span>
+                          <span className="text-white">{selectedCameraData.country} ({selectedCameraData.countryCode})</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Coordinates:</span>
+                          <span className="text-white">{selectedCameraData.lat.toFixed(4)}, {selectedCameraData.lng.toFixed(4)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Status:</span>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${getStatusColor(selectedCameraData.status)}`} />
+                            <span className="text-white capitalize">{selectedCameraData.status}</span>
+                          </div>
+                        </div>
+                        {selectedCameraData.manufacturer && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Manufacturer:</span>
+                            <span className="text-white">{selectedCameraData.manufacturer}</span>
+                          </div>
+                        )}
+                        {selectedCameraData.rating > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Rating:</span>
+                            <div className="flex items-center gap-1">
+                              {[...Array(5)].map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`h-3 w-3 ${
+                                    i < selectedCameraData.rating 
+                                      ? 'text-yellow-500 fill-current' 
+                                      : 'text-gray-600'
+                                  }`}
+                                />
+                              ))}
+                              <span className="text-white ml-1">({selectedCameraData.rating}/5)</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Last Seen:</span>
+                          <span className="text-white">
+                            {new Date(selectedCameraData.lastSeen).toLocaleString('en-IN', { 
+                              timeZone: 'Asia/Kolkata',
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </div>
+                        {selectedCameraData.timezone && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Timezone:</span>
+                            <span className="text-white">UTC{selectedCameraData.timezone}</span>
+                          </div>
+                        )}
+                        {selectedCameraData.city && selectedCameraData.region && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Region:</span>
+                            <span className="text-white">{selectedCameraData.city}, {selectedCameraData.region}</span>
+                          </div>
+                        )}
+                        {selectedCameraData.zip && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">ZIP Code:</span>
+                            <span className="text-white">{selectedCameraData.zip}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
-                  
-                  <div>
-                    <h4 className="font-medium text-white mb-2">AI Detection Results</h4>
-                    <div className="space-y-2">
+
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500" />
+                        Recent Incidents ({selectedCameraData.incidents.length})
+                      </h3>
                       {selectedCameraData.incidents.length > 0 ? (
-                        selectedCameraData.incidents.map((incident, index) => (
-                          <div key={index} className="p-2 bg-gray-900 rounded border border-gray-700">
-                            <div className="flex items-center justify-between mb-1">
-                              <Badge variant={getIncidentColor(incident.type)} className="text-xs">
-                                {incident.type.toUpperCase()}
-                              </Badge>
-                              <span className="text-xs text-gray-400">{incident.time}</span>
+                        <div className="space-y-2">
+                          {selectedCameraData.incidents.map((incident, index) => (
+                            <div key={index} className="bg-gray-900 p-3 rounded border border-gray-700">
+                              <div className="flex items-center justify-between mb-1">
+                                <Badge variant={getIncidentColor(incident.type)} className="text-xs">
+                                  {incident.type}
+                                </Badge>
+                                <span className="text-xs text-gray-400">{incident.time}</span>
+                              </div>
+                              <p className="text-sm text-white">{incident.description}</p>
                             </div>
-                            <p className="text-sm text-gray-300">{incident.description}</p>
-                          </div>
-                        ))
+                          ))}
+                        </div>
                       ) : (
-                        <p className="text-sm text-gray-500">No recent detections</p>
+                        <div className="text-center py-4">
+                          <AlertTriangle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                          <p className="text-gray-400 text-sm">No recent incidents</p>
+                        </div>
                       )}
+                    </div>
+
+                    {/* Connection Status */}
+                    <div>
+                      <h3 className="font-semibold text-white mb-2 flex items-center gap-2">
+                        <Wifi className="h-4 w-4 text-green-500" />
+                        Connection Status
+                      </h3>
+                      <div className="bg-gray-900 p-3 rounded border border-gray-700">
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Connection:</span>
+                            <div className="flex items-center gap-2">
+                              <Wifi className="h-3 w-3 text-green-500" />
+                              <span className="text-green-400">Connected</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Stream Quality:</span>
+                            <span className="text-white">{liveFeedData?.quality || 'HD'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Latency:</span>
+                            <span className="text-white">{liveFeedData?.latency || '~3s'}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-400">Source:</span>
+                            <Badge variant="secondary" className="text-xs uppercase">
+                              {selectedCameraData.source}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-700">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Take Screenshot
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <Video className="h-4 w-4 mr-2" />
+                    Record
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Camera Settings
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => generatePDFReport(selectedCameraData)}
+                    className="border-gray-600 text-white hover:bg-gray-700"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Report
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="aspect-video flex items-center justify-center bg-gray-900 rounded-lg">
+              <div className="flex items-center justify-center h-96">
                 <div className="text-center">
-                  <Camera className="h-16 w-16 text-gray-600 mx-auto mb-4" />
+                  <Video className="h-16 w-16 text-gray-600 mx-auto mb-4" />
                   <p className="text-gray-400">Select a camera to view live feed</p>
+                  <p className="text-sm text-gray-500">Choose from the list on the left</p>
                 </div>
               </div>
             )}
@@ -730,85 +962,58 @@ export default function CamerasPage() {
         </Card>
       </div>
 
-      {/* Global Map Section */}
-      <Card className="bg-gray-800 border-gray-700">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Globe className="h-5 w-5 text-blue-500" />
-            Global Camera Locations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="h-96 bg-gray-900 rounded-lg border border-gray-700 flex items-center justify-center">
-            <div className="text-center">
-              <Globe className="h-16 w-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">Interactive world map showing camera locations</p>
-              <p className="text-sm text-gray-500 mt-2">
-                {cameras.length + customCameras.length} total cameras ({cameras.length} Insecam + {customCameras.length} Custom)
-              </p>
-              <div className="mt-2 text-xs text-gray-500">
-                <span>Countries: {new Set([...cameras, ...customCameras].map(c => c.country)).size}</span>
-              </div>
-              {filteredCameras.length > 0 && (
-                <div className="mt-4 text-xs text-gray-500">
-                  <p>Current view: {filteredCameras.slice(0, 3).map(c => c.city ? `${c.city}, ${c.region}` : c.name).join(' • ')}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Statistics Section */}
+      {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gray-800 border-gray-700">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Globe className="h-8 w-8 text-blue-500" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-white">{cameras.length}</p>
-                <p className="text-sm text-gray-400">Insecam Cameras</p>
+                <p className="text-sm font-medium text-gray-400">Total Cameras</p>
+                <p className="text-2xl font-bold text-white">{filteredCameras.length}</p>
               </div>
+              <Camera className="h-8 w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gray-800 border-gray-700">
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Monitor className="h-8 w-8 text-green-500" />
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-white">{customCameras.length}</p>
-                <p className="text-sm text-gray-400">Custom Cameras</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gray-800 border-gray-700">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-8 w-8 text-purple-500" />
-              <div>
-                <p className="text-2xl font-bold text-white">
-                  {new Set([...cameras, ...customCameras].map(c => c.country)).size}
+                <p className="text-sm font-medium text-gray-400">Online</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {filteredCameras.filter(cam => cam.status === 'online').length}
                 </p>
-                <p className="text-sm text-gray-400">Countries</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gray-800 border-gray-700">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
               <Wifi className="h-8 w-8 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-800 border-gray-700">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-2xl font-bold text-white">
-                  {[...cameras, ...customCameras].filter(c => c.status === 'online').length}
+                <p className="text-sm font-medium text-gray-400">Offline</p>
+                <p className="text-2xl font-bold text-red-400">
+                  {filteredCameras.filter(cam => cam.status === 'offline').length}
                 </p>
-                <p className="text-sm text-gray-400">Online</p>
               </div>
+              <WifiOff className="h-8 w-8 text-red-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-800 border-gray-700">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-400">Total Incidents</p>
+                <p className="text-2xl font-bold text-yellow-400">
+                  {filteredCameras.reduce((total, cam) => total + cam.incidents.length, 0)}
+                </p>
+              </div>
+              <AlertTriangle className="h-8 w-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
