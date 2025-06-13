@@ -1,0 +1,30 @@
+🎯 Behavior Detection System
+* **Loitering:** Flags stationary individuals who remain in the same location for extended periods.
+* **Unattended Baggage:** Detects bags, packages, or luggage left without owners nearby.
+* **Sudden Dispersal:** Triggers alerts when crowd size drops quickly, indicating potential panic or evacuation.
+
+🧨 Weapon Detection (Demo Mode)
+* Handbags are treated as proxies for weapons in demonstration.
+* Red bounding box follows detected handbag objects.
+* Alert persists once triggered and requires manual reset.
+
+🧠 Face Recognition & Emotion Labeling
+* Recognizes known suspects via `data/known_suspects.json` database.
+* Shows suspect names highlighted in **magenta**.
+* Emotion Labels:
+   * Weapon holder → **"Angry"**
+   * All others → **"Neutral"**
+
+🎥 Input & Output Processing
+* Supports webcam feed or MP4 file input (user selected).
+* Output Generation:
+   * Processed video → `demo/output_*.mp4`
+   * Alert snapshots → `demo/frame_*.jpg`
+
+System Features:
+- Real-time video analysis
+- Multi-threat detection
+- Automated alert generation
+- Evidence capture and storage
+- Suspect identification database
+- Behavioral pattern recognition
