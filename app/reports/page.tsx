@@ -340,7 +340,7 @@ const SecurityReportGenerator: React.FC = () => {
                     <div>
                       <h3 className="text-xl font-bold text-white mb-2">Download Complete Report</h3>
                       <p className="text-blue-200 text-sm">
-                        Excel file with detailed analytics, charts, and recommendations
+                        Docx file with detailed analytics, charts, and recommendations
                       </p>
                       <p className="text-blue-300 text-xs mt-1">
                         File: {reportData.fileName}
@@ -351,7 +351,7 @@ const SecurityReportGenerator: React.FC = () => {
                       className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 flex items-center"
                     >
                       <Download className="w-5 h-5 mr-2" />
-                      Download Excel
+                      Download Docx
                     </button>
                   </div>
                 </div>
