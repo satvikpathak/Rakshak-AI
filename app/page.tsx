@@ -126,7 +126,7 @@ const Sidebar = () => {
       transition={{ duration: 0.8, delay: 0.6 }}
       
     >
-      <div className="space-y-4">
+      <div className="space-y-4 border-2 rounded-lg p-4">
         {menuItems.map((item, index) => (
           <motion.button
             key={item.id}
@@ -234,7 +234,7 @@ const Dashboard = () => {
   const [activeThreats] = useState(3);
 
   return (
-    <div className="flex-1 p-8 space-y-8 overflow-y-auto">
+    <div className="flex-1 p-8 border-2 rounded-lg space-y-8 overflow-y-auto">
       {/* Stats Grid */}
       <motion.div
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
@@ -483,7 +483,7 @@ const HeroSection = () => {
       </p>
       
       <motion.button
-        className="bg-gradient-to-r from-cyan-600 via-magenta-600 to-green-600 hover:from-cyan-700 hover:via-magenta-700 hover:to-green-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-cyan-500/30 transition-all duration-300 flex items-center space-x-2"
+        className="bg-gradient-to-r from-cyan-600 via-cyan-400 to-cyan-600 hover:from-cyan-700 hover:via-magenta-700 hover:to-green-700 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-cyan-500/30 transition-all duration-300 flex items-center space-x-2"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, delay: 0.8 }}
@@ -1171,7 +1171,7 @@ const Footer = () => {
 
 const RakshakAILanding = () => {
   return (
-    <div className="min-h-screen  text-white relative">
+    <div className="min-h-screen ml-6 mr-6 mb-6  text-white relative">
       <BackgroundAnimation />
       <Header />
       

@@ -20,11 +20,13 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={`${inter.className} bg-gray-900 text-white`}>
         <div className="min-h-screen">
+          <div className='flex'>
            <Navigation />
-          <main className='ml-64' >
+          <main className='min-w-[88%] ' >
            
             {children}
           </main>
+          </div>
         </div>
         <Toaster />
       </body>
