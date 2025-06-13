@@ -15,6 +15,7 @@ import {
   Eye,
   Download
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // Mock data
 const mockAlerts = [
@@ -84,6 +85,7 @@ const mockRecentIncidents = [
 
 export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const router = useRouter();
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -247,7 +249,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="text-xs">
+                  <Button size="sm" variant="outline" className="text-xs" onClick={()=>router.push('/cameras')}>
                     <Eye className="h-3 w-3 mr-1" />
                     View
                   </Button>

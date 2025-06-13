@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Baseline as Timeline, Search, Filter, Download, MapPin, Clock, AlertTriangle, Camera, FileText, Calendar } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 // Mock incident data
 const mockIncidents = [
@@ -106,6 +107,7 @@ export default function TimelinePage() {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [selectedDate, setSelectedDate] = useState('today');
+  const router = useRouter();
 
   const filteredIncidents = useMemo(() => {
     return mockIncidents.filter(incident => {
@@ -387,7 +389,7 @@ export default function TimelinePage() {
                             {formatDate(incident.timestamp)} • Type: {incident.type}
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline" className="text-xs border-gray-600 text-white hover:bg-gray-700">
+                            <Button size="sm" variant="outline" className="text-xs border-gray-600 text-white hover:bg-gray-700" onClick={()=>router.push(`/cameras`)}>
                               <Camera className="h-3 w-3 mr-1" />
                               View Feed
                             </Button>
